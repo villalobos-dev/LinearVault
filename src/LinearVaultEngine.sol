@@ -23,15 +23,9 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    IERC20Permit
-} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {
-    ReentrancyGuardTransient
-} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 /**
  * @title LinearVaultEngine
@@ -113,12 +107,10 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
     mapping(uint256 streamId => Stream stream) private s_streams;
 
     /// @dev Ids of the streams funded by each employer, in creation order.
-    mapping(address employer => uint256[] streamIds)
-        private s_streamsByEmployer;
+    mapping(address employer => uint256[] streamIds) private s_streamsByEmployer;
 
     /// @dev Ids of the streams each employee is the beneficiary of, in creation order.
-    mapping(address employee => uint256[] streamIds)
-        private s_streamsByEmployee;
+    mapping(address employee => uint256[] streamIds) private s_streamsByEmployee;
 
     /// @dev Next id to assign; equals the number of streams created.
     uint256 private s_lastIdStream;
@@ -154,12 +146,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param amount Amount withdrawn in this call, in token units.
      * @param totalWithdrawn Cumulative amount withdrawn from the stream after this call.
      */
-    event Withdrawn(
-        uint256 indexed streamId,
-        address indexed employee,
-        uint256 amount,
-        uint256 totalWithdrawn
-    );
+    event Withdrawn(uint256 indexed streamId, address indexed employee, uint256 amount, uint256 totalWithdrawn);
 
     /*//////////////////////////////////////////////////////////////
                                 MODIFIERS
@@ -221,23 +208,9 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
         bytes32 r,
         bytes32 s
     ) external {
-        try
-            IERC20Permit(address(i_token)).permit(
-                msg.sender,
-                address(this),
-                _totalAmount,
-                deadline,
-                v,
-                r,
-                s
-            )
-        {} catch {} // The signature is visible in the mempool, so if someone else executes it first this reverts and is useless; in that case just carry on
-        createStream(
-            _employee,
-            _durationInDays,
-            _totalAmount,
-            _lockDurationInDays
-        );
+        try IERC20Permit(address(i_token)).permit(msg.sender, address(this), _totalAmount, deadline, v, r, s) {}
+            catch {} // The signature is visible in the mempool, so if someone else executes it first this reverts and is useless; in that case just carry on
+        createStream(_employee, _durationInDays, _totalAmount, _lockDurationInDays);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -262,12 +235,9 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param _totalAmount Total amount to deposit and to vest linearly.
      * @param _lockDurationInDays Days that must pass before the beneficiary can withdraw.
      */
-    function createStream(
-        address _employee,
-        uint256 _durationInDays,
-        uint256 _totalAmount,
-        uint256 _lockDurationInDays
-    ) public {
+    function createStream(address _employee, uint256 _durationInDays, uint256 _totalAmount, uint256 _lockDurationInDays)
+        public
+    {
         if (_employee == address(0)) {
             revert LinearVaultEngine__AddressZero();
         }
@@ -289,8 +259,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
         }
 
         uint256 endTime = block.timestamp + (_durationInDays * SECONDS_PER_DAY);
-        uint256 withdrawableFrom = block.timestamp +
-            (_lockDurationInDays * SECONDS_PER_DAY);
+        uint256 withdrawableFrom = block.timestamp + (_lockDurationInDays * SECONDS_PER_DAY);
         uint256 streamId = s_lastIdStream;
 
         s_streams[streamId] = Stream({
@@ -306,15 +275,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
         s_streamsByEmployer[msg.sender].push(streamId);
         s_streamsByEmployee[_employee].push(streamId);
 
-        emit StreamCreated(
-            streamId,
-            msg.sender,
-            _employee,
-            _totalAmount,
-            block.timestamp,
-            endTime,
-            withdrawableFrom
-        );
+        emit StreamCreated(streamId, msg.sender, _employee, _totalAmount, block.timestamp, endTime, withdrawableFrom);
 
         s_lastIdStream++;
 
@@ -329,16 +290,13 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to withdraw from.
      * @param amount Amount to withdraw, which must not exceed {amountAvailableToWithdraw}.
      */
-    function withdrawSpecificAmount(
-        uint256 streamId,
-        uint256 amount
-    ) public nonReentrant streamExists(streamId) {
+    function withdrawSpecificAmount(uint256 streamId, uint256 amount) public nonReentrant streamExists(streamId) {
         if (amount == 0) {
             revert LinearVaultEngine__RequiredValidAmount();
         }
 
         Stream storage stream = s_streams[streamId];
-        
+
         if (msg.sender != stream.employee) {
             revert LinearVaultEngine__OnlyEmployeeCanRequestWithdraw();
         }
@@ -355,12 +313,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
 
         stream.amountWithdrawn += amount;
 
-        emit Withdrawn(
-            streamId,
-            stream.employee,
-            amount,
-            stream.amountWithdrawn
-        );
+        emit Withdrawn(streamId, stream.employee, amount, stream.amountWithdrawn);
 
         i_token.safeTransfer(stream.employee, amount);
     }
@@ -384,9 +337,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return Amount vested and not yet withdrawn, in token units.
      */
-    function amountAvailableToWithdraw(
-        uint256 streamId
-    ) public view streamExists(streamId) returns (uint256) {
+    function amountAvailableToWithdraw(uint256 streamId) public view streamExists(streamId) returns (uint256) {
         return _amountAvailableToWithdraw(streamId);
     }
 
@@ -402,9 +353,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return Amount vested and not yet withdrawn, in token units.
      */
-    function _amountAvailableToWithdraw(
-        uint256 streamId
-    ) private view returns (uint256) {
+    function _amountAvailableToWithdraw(uint256 streamId) private view returns (uint256) {
         Stream memory stream = s_streams[streamId];
 
         if (block.timestamp < stream.withdrawableFrom) {
@@ -431,9 +380,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The complete {Stream} struct; zeroed fields if the id does not exist.
      */
-    function getStream(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (Stream memory) {
+    function getStream(uint256 streamId) external view streamExists(streamId) returns (Stream memory) {
         return s_streams[streamId];
     }
 
@@ -442,9 +389,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The employer address.
      */
-    function getEmployer(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (address) {
+    function getEmployer(uint256 streamId) external view streamExists(streamId) returns (address) {
         return s_streams[streamId].employer;
     }
 
@@ -453,9 +398,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The employee address.
      */
-    function getEmployee(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (address) {
+    function getEmployee(uint256 streamId) external view streamExists(streamId) returns (address) {
         return s_streams[streamId].employee;
     }
 
@@ -464,9 +407,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The start timestamp in seconds.
      */
-    function getStartTime(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getStartTime(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         return s_streams[streamId].startTime;
     }
 
@@ -475,9 +416,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The end timestamp in seconds.
      */
-    function getEndTime(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getEndTime(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         return s_streams[streamId].endTime;
     }
 
@@ -486,9 +425,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The total amount in token units.
      */
-    function getTotalAmount(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getTotalAmount(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         return s_streams[streamId].totalAmount;
     }
 
@@ -497,9 +434,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The withdrawn amount in token units.
      */
-    function getAmountWithdrawn(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getAmountWithdrawn(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         return s_streams[streamId].amountWithdrawn;
     }
 
@@ -510,9 +445,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The timestamp in seconds before which withdrawing reverts.
      */
-    function getWithdrawableFrom(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getWithdrawableFrom(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         return s_streams[streamId].withdrawableFrom;
     }
 
@@ -523,9 +456,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The number of days that must pass from `startTime` before withdrawing is allowed.
      */
-    function getLockDurationInDays(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getLockDurationInDays(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         Stream memory stream = s_streams[streamId];
         return (stream.withdrawableFrom - stream.startTime) / SECONDS_PER_DAY;
     }
@@ -537,9 +468,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param streamId Id of the stream to query.
      * @return The number of days between `startTime` and `endTime`.
      */
-    function getDurationInDays(
-        uint256 streamId
-    ) external view streamExists(streamId) returns (uint256) {
+    function getDurationInDays(uint256 streamId) external view streamExists(streamId) returns (uint256) {
         Stream memory stream = s_streams[streamId];
         return (stream.endTime - stream.startTime) / SECONDS_PER_DAY;
     }
@@ -549,9 +478,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param employer Address that funded the streams.
      * @return The ids of the employer's streams, in creation order.
      */
-    function getStreamsByEmployer(
-        address employer
-    ) external view returns (uint256[] memory) {
+    function getStreamsByEmployer(address employer) external view returns (uint256[] memory) {
         return s_streamsByEmployer[employer];
     }
 
@@ -560,9 +487,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param employee Address that receives the funds.
      * @return The ids of the employee's streams, in creation order.
      */
-    function getStreamsByEmployee(
-        address employee
-    ) external view returns (uint256[] memory) {
+    function getStreamsByEmployee(address employee) external view returns (uint256[] memory) {
         return s_streamsByEmployee[employee];
     }
 
@@ -572,9 +497,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param employer Address that funded the streams.
      * @return The number of streams created by the employer.
      */
-    function getStreamCountByEmployer(
-        address employer
-    ) external view returns (uint256) {
+    function getStreamCountByEmployer(address employer) external view returns (uint256) {
         return s_streamsByEmployer[employer].length;
     }
 
@@ -584,9 +507,7 @@ contract LinearVaultEngine is ReentrancyGuardTransient {
      * @param employee Address that receives the funds.
      * @return The number of streams the employee is the beneficiary of.
      */
-    function getStreamCountByEmployee(
-        address employee
-    ) external view returns (uint256) {
+    function getStreamCountByEmployee(address employee) external view returns (uint256) {
         return s_streamsByEmployee[employee].length;
     }
 

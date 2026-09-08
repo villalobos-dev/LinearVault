@@ -235,6 +235,7 @@ contract LinearVaultEngineUnitTest is Test {
         // The rest stays in the vault waiting to vest
         assertEq(mockToken.balanceOf(address(linearVaultEngine)), TOTAL_AMOUNT - vestedAtTwentyDays);
     }
+
     /*//////////////////////////////////////////////////////////////
                           DAY <-> SECOND CONVERSION
     //////////////////////////////////////////////////////////////*/
@@ -255,10 +256,7 @@ contract LinearVaultEngineUnitTest is Test {
 
     /// @notice `getWithdrawableFrom` returns the absolute timestamp, not a duration.
     function testGetWithdrawableFromReturnsTimestamp() public createStreamWithoutSign {
-        assertEq(
-            linearVaultEngine.getWithdrawableFrom(FIRST_STREAM_ID),
-            block.timestamp + MINIMUM_DAYS_TO_WITHDRAW
-        );
+        assertEq(linearVaultEngine.getWithdrawableFrom(FIRST_STREAM_ID), block.timestamp + MINIMUM_DAYS_TO_WITHDRAW);
     }
 
     /// @notice A one day stream is the shortest one expressible, and it vests over a full day.
@@ -278,9 +276,7 @@ contract LinearVaultEngineUnitTest is Test {
     function testRevertsIfLockIsLongerThanDuration() public {
         vm.startPrank(employer);
         mockToken.approve(address(linearVaultEngine), TOTAL_AMOUNT);
-        vm.expectRevert(
-            LinearVaultEngine.LinearVaultEngine__MinimumDaysNeedsToBeLessThanDuration.selector
-        );
+        vm.expectRevert(LinearVaultEngine.LinearVaultEngine__MinimumDaysNeedsToBeLessThanDuration.selector);
         linearVaultEngine.createStream(employee, DURATION_IN_DAYS, TOTAL_AMOUNT, DURATION_IN_DAYS + 1);
         vm.stopPrank();
     }
@@ -368,9 +364,7 @@ contract LinearVaultEngineUnitTest is Test {
     function testRevertsIfEmployerIsAlsoTheEmployee() public {
         vm.startPrank(employer);
         mockToken.approve(address(linearVaultEngine), TOTAL_AMOUNT);
-        vm.expectRevert(
-            LinearVaultEngine.LinearVaultEngine__EmployerCannotBeEmployee.selector
-        );
+        vm.expectRevert(LinearVaultEngine.LinearVaultEngine__EmployerCannotBeEmployee.selector);
         linearVaultEngine.createStream(employer, DURATION_IN_DAYS, TOTAL_AMOUNT, LOCK_IN_DAYS);
         vm.stopPrank();
 
@@ -490,10 +484,7 @@ contract LinearVaultEngineUnitTest is Test {
         vm.warp(block.timestamp + END_TIME);
 
         vm.prank(makeAddr("stranger"));
-        vm.expectRevert(
-            LinearVaultEngine.LinearVaultEngine__OnlyEmployeeCanRequestWithdraw.selector
-        );
+        vm.expectRevert(LinearVaultEngine.LinearVaultEngine__OnlyEmployeeCanRequestWithdraw.selector);
         linearVaultEngine.withdrawMax(FIRST_STREAM_ID);
     }
-
 }
